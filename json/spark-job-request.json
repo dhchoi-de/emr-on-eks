@@ -1,0 +1,20 @@
+{
+  "virtualClusterId": "gqzy98zb7egvxpztuztyo5oz0",
+  "name": "spark-job",
+  "executionRoleArn": "arn:aws:iam::943826287990:role/EMRContainers-JobExecutionRole",
+  "releaseLabel": "emr-7.2.0-latest",
+  "jobDriver": {
+      "sparkSubmitJobDriver": {
+          "entryPoint": "local:///usr/lib/spark/examples/src/main/python/pi.py",
+          "sparkSubmitParameters": "--conf spark.executor.instances=2 --conf spark.executor.memory=1G --conf spark.driver.instances=1 --conf spark.driver.memory=1G"
+    }
+  },
+  "configurationOverrides": {
+    "applicationConfiguration": [
+      {
+        "classification": "spark-defaults"
+      }
+    ]
+  }
+}
+

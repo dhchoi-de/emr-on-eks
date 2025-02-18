@@ -1,0 +1,49 @@
+# 베이스 이미지로 Python 3.9 사용
+FROM python:3.9-slim
+
+# 필요한 패키지 설치
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    unzip \
+    procps \
+    openjdk-17-jdk \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Spark 다운로드 및 설치
+# Spark 3.5.1 버전
+ENV SPARK_VERSION=3.5.1
+ENV HADOOP_VERSION=3
+
+# Spark 다운로드 및 설치
+RUN wget https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz \
+    && tar -xvzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz \
+    && mv spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark \
+    && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+
+# 환경 변수 설정
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+ENV PATH=$PATH:$JAVA_HOME/bin:$PATH
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$PATH:$SPARK_HOME/bin
+
+# PySpark 설치
+RUN pip install pyspark==${SPARK_VERSION}
+
+# Jupyter Notebook 설치
+RUN pip install jupyter
+
+# 노트북 디렉토리 설정
+WORKDIR /app
+
+# Jupyter Notebook의 기본 설정 파일 생성
+RUN jupyter notebook --generate-config
+
+# Jupyter Notebook 설정 파일 수정 (포트 설정 등)
+RUN echo "c.NotebookApp.ip = '0.0.0.0'" >> /root/.jupyter/jupyter_notebook_config.py
+RUN echo "c.NotebookApp.port = 8888" >> /root/.jupyter/jupyter_notebook_config.py
+RUN echo "c.NotebookApp.allow_origin = '*'" >> /root/.jupyter/jupyter_notebook_config.py
+
+# 명령어 설정
+CMD ["jupyter", "notebook", "--ip", "0.0.0.0", "--port", "8888", "--no-browser", "--allow-root"]
