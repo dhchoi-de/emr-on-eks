@@ -1,0 +1,79 @@
+# EMR on EKS에서 사용할 커스텀 이미지 도커파일
+FROM public.ecr.aws/emr-on-eks/spark/emr-7.2.0
+
+USER root
+
+# 기본 환경 변수 설정
+ENV AWS_REGION=us-east-1 \
+   SPARK_HOME=/usr/lib/spark \
+   HADOOP_HOME=/usr/lib/hadoop \
+   JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto \
+   PYSPARK_PYTHON=/usr/bin/python3
+
+
+ENV AWS_REGION=us-east-1 \
+    SPARK_HOME=/usr/lib/spark \
+    HADOOP_HOME=/usr/lib/hadoop \
+    JAVA_HOME=/etc/alternatives/jre \
+    PYSPARK_PYTHON=/usr/bin/python3
+
+# 필수 패키지 설치
+RUN yum update -y && \
+    yum install -y \
+    sudo \
+    curl \
+    jq \
+    unzip \
+    git \
+    tar --allowerasing && \
+    yum clean all
+
+# PySpark 및 추가 Python 패키지 설치
+RUN pip3 install --no-cache-dir \
+    pyspark==3.5.1 \
+    boto3 \
+    requests \
+    pandas \
+    numpy \
+    fastparquet \
+    pyarrow
+
+
+# JAR 파일을 /opt/spark/jars/에 복사
+RUN mkdir -p /opt/spark/jars && \
+    curl -o /opt/spark/jars/aws-java-sdk-bundle-1.12.705.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.705/aws-java-sdk-bundle-1.12.705.jar && \
+    curl -o /opt/spark/jars/commons-configuration2-2.8.0.jar https://repo1.maven.org/maven2/org/apache/commons/commons-configuration2/2.8.0/commons-configuration2-2.8.0.jar && \
+    curl -o /opt/spark/jars/hadoop-aws-3.3.1.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.1/hadoop-aws-3.3.1.jar && \
+    curl -o /opt/spark/jars/hadoop-client-3.3.1.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-client/3.3.1/hadoop-client-3.3.1.jar && \
+    curl -o /opt/spark/jars/hadoop-common-3.3.1.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.3.1/hadoop-common-3.3.1.jar && \
+    curl -o /opt/spark/jars/htrace-core4-4.2.0-incubating.jar https://repo1.maven.org/maven2/org/apache/htrace/htrace-core4/4.2.0-incubating/htrace-core4-4.2.0-incubating.jar && \
+    curl -o /opt/spark/jars/re2j-1.6.jar https://repo1.maven.org/maven2/com/google/re2j/re2j/1.6/re2j-1.6.jar && \
+    curl -o /opt/spark/jars/stax2-api-4.2.1.jar https://repo1.maven.org/maven2/org/codehaus/woodstox/stax2-api/4.2.1/stax2-api-4.2.1.jar && \
+    curl -o /opt/spark/jars/woodstox-core-6.4.0.jar https://repo1.maven.org/maven2/com/fasterxml/woodstox/woodstox-core/6.4.0/woodstox-core-6.4.0.jar
+
+
+# Hadoop AWS 관련 설정 추가
+RUN mkdir -p $HADOOP_HOME/etc/hadoop && \
+    echo "export HADOOP_HOME=$HADOOP_HOME" >> ~/.bashrc && \
+    echo "export SPARK_HOME=$SPARK_HOME" >> ~/.bashrc && \
+    echo "export PATH=$SPARK_HOME/bin:$HADOOP_HOME/bin:$PATH" >> ~/.bashrc
+
+# S3 접근을 위한 AWS CLI 설치
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws
+
+
+# Hadoop 및 Spark 관련 환경 변수 설정
+ENV HADOOP_CONF_DIR=/etc/hadoop/conf \
+    SPARK_CONF_DIR=/etc/spark/conf \
+    PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH \
+    AWS_REGION=ap-northeast-2
+
+# S3A 관련 설정 (필요한 경우 추가 설정 가능)
+RUN echo "fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem" >> $HADOOP_HOME/etc/hadoop/core-site.xml
+
+# 작업 디렉토리 설정
+USER hadoop:hadoop
+WORKDIR /home/hadoop
