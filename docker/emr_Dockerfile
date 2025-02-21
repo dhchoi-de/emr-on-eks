@@ -4,18 +4,11 @@ FROM public.ecr.aws/emr-on-eks/spark/emr-7.2.0
 USER root
 
 # 기본 환경 변수 설정
-ENV AWS_REGION=us-east-1 \
+ENV AWS_REGION=ap-northeast-2 \
    SPARK_HOME=/usr/lib/spark \
    HADOOP_HOME=/usr/lib/hadoop \
    JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto \
    PYSPARK_PYTHON=/usr/bin/python3
-
-
-ENV AWS_REGION=us-east-1 \
-    SPARK_HOME=/usr/lib/spark \
-    HADOOP_HOME=/usr/lib/hadoop \
-    JAVA_HOME=/etc/alternatives/jre \
-    PYSPARK_PYTHON=/usr/bin/python3
 
 # 필수 패키지 설치
 RUN yum update -y && \
@@ -68,8 +61,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 # Hadoop 및 Spark 관련 환경 변수 설정
 ENV HADOOP_CONF_DIR=/etc/hadoop/conf \
     SPARK_CONF_DIR=/etc/spark/conf \
-    PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH \
-    AWS_REGION=ap-northeast-2
+    PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH
 
 # S3A 관련 설정 (필요한 경우 추가 설정 가능)
 RUN echo "fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem" >> $HADOOP_HOME/etc/hadoop/core-site.xml
