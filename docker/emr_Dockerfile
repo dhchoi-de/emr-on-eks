@@ -1,14 +1,12 @@
-# EMR on EKS에서 사용할 커스텀 이미지 도커파일
 FROM public.ecr.aws/emr-on-eks/spark/emr-7.2.0
 
 USER root
-
 # 기본 환경 변수 설정
 ENV AWS_REGION=ap-northeast-2 \
-   SPARK_HOME=/usr/lib/spark \
-   HADOOP_HOME=/usr/lib/hadoop \
-   JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto \
-   PYSPARK_PYTHON=/usr/bin/python3
+    SPARK_HOME=/usr/lib/spark \
+    HADOOP_HOME=/usr/lib/hadoop \
+    JAVA_HOME=/etc/alternatives/jre \
+    PYSPARK_PYTHON=/usr/bin/python3
 
 # 필수 패키지 설치
 RUN yum update -y && \
@@ -29,20 +27,15 @@ RUN pip3 install --no-cache-dir \
     pandas \
     numpy \
     fastparquet \
-    pyarrow
+    pyarrow \ 
+    PyPDF2
 
 
 # JAR 파일을 /opt/spark/jars/에 복사
+# Spark, aws-java-sdk, hadoop-aws 간의 버전 호환성이 중요하다.
 RUN mkdir -p /opt/spark/jars && \
-    curl -o /opt/spark/jars/aws-java-sdk-bundle-1.12.705.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.705/aws-java-sdk-bundle-1.12.705.jar && \
-    curl -o /opt/spark/jars/commons-configuration2-2.8.0.jar https://repo1.maven.org/maven2/org/apache/commons/commons-configuration2/2.8.0/commons-configuration2-2.8.0.jar && \
-    curl -o /opt/spark/jars/hadoop-aws-3.3.1.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.1/hadoop-aws-3.3.1.jar && \
-    curl -o /opt/spark/jars/hadoop-client-3.3.1.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-client/3.3.1/hadoop-client-3.3.1.jar && \
-    curl -o /opt/spark/jars/hadoop-common-3.3.1.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.3.1/hadoop-common-3.3.1.jar && \
-    curl -o /opt/spark/jars/htrace-core4-4.2.0-incubating.jar https://repo1.maven.org/maven2/org/apache/htrace/htrace-core4/4.2.0-incubating/htrace-core4-4.2.0-incubating.jar && \
-    curl -o /opt/spark/jars/re2j-1.6.jar https://repo1.maven.org/maven2/com/google/re2j/re2j/1.6/re2j-1.6.jar && \
-    curl -o /opt/spark/jars/stax2-api-4.2.1.jar https://repo1.maven.org/maven2/org/codehaus/woodstox/stax2-api/4.2.1/stax2-api-4.2.1.jar && \
-    curl -o /opt/spark/jars/woodstox-core-6.4.0.jar https://repo1.maven.org/maven2/com/fasterxml/woodstox/woodstox-core/6.4.0/woodstox-core-6.4.0.jar
+    curl -o /opt/spark/jars/aws-java-sdk-bundle-1.11.901.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.901/aws-java-sdk-bundle-1.11.901.jar && \
+    curl -o /opt/spark/jars/hadoop-aws-3.3.1.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.1/hadoop-aws-3.3.1.jar
 
 
 # Hadoop AWS 관련 설정 추가
@@ -57,15 +50,15 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     ./aws/install && \
     rm -rf awscliv2.zip aws
 
+ENV PYTHONPATH="/usr/local/lib/python3.8/site-packages:/usr/lib/python3.9/site-packages"
 
 # Hadoop 및 Spark 관련 환경 변수 설정
 ENV HADOOP_CONF_DIR=/etc/hadoop/conf \
     SPARK_CONF_DIR=/etc/spark/conf \
     PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH
 
-# S3A 관련 설정 (필요한 경우 추가 설정 가능)
-RUN echo "fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem" >> $HADOOP_HOME/etc/hadoop/core-site.xml
-
 # 작업 디렉토리 설정
+# 로컬 개발환경이면 USER hadoop:hadoop 지우고 컨테이너에서 su - hadoop 으로 사용
 USER hadoop:hadoop
 WORKDIR /home/hadoop
+
